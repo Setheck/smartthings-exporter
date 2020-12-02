@@ -10,6 +10,8 @@ import (
 )
 
 var (
+	Version = "dev"
+
 	API = "https://api.smartthings.com/v1"
 )
 
@@ -40,7 +42,7 @@ type PagingLinks struct {
 }
 
 type Location struct {
-	LocationID       string
+	ID               string
 	Name             string
 	CountryCode      string
 	Latitude         float32
@@ -53,7 +55,11 @@ type Location struct {
 }
 
 type Profile struct {
-	ID string
+	ID         string       `json:"id"`
+	Name       string       `json:"name"`
+	Components []*Component `json:"components"`
+	Metadata   interface{}  `json:"metadata"`
+	Status     string       `json:"status"`
 }
 
 type App struct {
@@ -96,6 +102,12 @@ func ToString(obj interface{}) (string, error) {
 	return string(data), nil
 }
 
+type Room struct {
+	ID         string `json:"roomId"`
+	LocationID string `json:"locationId"`
+	Name       string `json:"name"`
+}
+
 type Ble struct {
 }
 type BleD2D struct {
@@ -110,12 +122,12 @@ type Viper struct {
 }
 
 type Capability struct {
-	ID      string
+	ID      string `json:"capabilityId"`
 	Version int
 }
 
 type Component struct {
-	ID           string
+	ID           string `json:"id"`
 	Label        string
 	Capabilities []*Capability
 	Categories   []map[string]string
@@ -137,6 +149,7 @@ func (client *Client) apiGet(endpoint string, queryParams url.Values) (*http.Res
 
 	queryParams.Encode()
 	req.URL.RawQuery = queryParams.Encode()
+	req.Header.Add("User-Agent", fmt.Sprintf("go-smartthings-%s", Version))
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", client.token))
 
 	resp, err := http.DefaultClient.Do(req)
@@ -150,19 +163,59 @@ func (client *Client) apiGet(endpoint string, queryParams url.Values) (*http.Res
 	return resp, nil
 }
 
-func (client *Client) ListAllCapabilities() ([]*Capability, error) {
-	resp, err := client.apiGet("/capabilities", nil)
+func (client *Client) ListAllDeviceProfiles(params url.Values) ([]*Profile, error) {
+	resp, err := client.apiGet("/deviceprofiles", params)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := parseListResponse(resp.Body)
+	var profile []*Profile
+	if _, err := parseListResponse(resp.Body, &profile); err != nil {
+		return nil, err
+	}
+
+	return profile, err
+}
+
+func (client *Client) ListRooms(locationId string) ([]*Room, error) {
+	resp, err := client.apiGet(fmt.Sprintf("/locations/%s/rooms", locationId), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var rooms []*Room
+	if _, err := parseListResponse(resp.Body, &rooms); err != nil {
+		return nil, err
+	}
+
+	return rooms, err
+}
+
+func (client *Client) ListLocations(params url.Values) ([]*Location, error) {
+	resp, err := client.apiGet("/locations", params)
+	if err != nil {
+		return nil, err
+	}
+
+	var locations []*Location
+	if _, err := parseListResponse(resp.Body, &locations); err != nil {
+		return nil, err
+	}
+
+	return locations, err
+}
+
+func (client *Client) ListAllCapabilities(params url.Values) ([]*Capability, error) {
+	resp, err := client.apiGet("/capabilities", params)
 	if err != nil {
 		return nil, err
 	}
 
 	var capabilities []*Capability
-	err = json.Unmarshal(response.Items, &capabilities)
+	if _, err := parseListResponse(resp.Body, &capabilities); err != nil {
+		return nil, err
+	}
+
 	return capabilities, err
 }
 
@@ -172,17 +225,15 @@ func (client *Client) ListDevices() ([]*Device, error) {
 		return nil, err
 	}
 
-	response, err := parseListResponse(resp.Body)
-	if err != nil {
+	var devices []*Device
+	if _, err = parseListResponse(resp.Body, &devices); err != nil {
 		return nil, err
 	}
 
-	var devices []*Device
-	err = json.Unmarshal(response.Items, &devices)
 	return devices, err
 }
 
-func parseListResponse(input io.ReadCloser) (*ListResponse, error) {
+func parseListResponse(input io.ReadCloser, itemsOut interface{}) (*ListResponse, error) {
 	raw, err := ioutil.ReadAll(input)
 	if err != nil {
 		return nil, err
@@ -198,5 +249,7 @@ func parseListResponse(input io.ReadCloser) (*ListResponse, error) {
 	if err := json.Unmarshal(raw, &listResponse); err != nil {
 		return nil, err
 	}
-	return listResponse, nil
+
+	err = json.Unmarshal(listResponse.Items, &itemsOut)
+	return listResponse, err
 }

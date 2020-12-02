@@ -133,6 +133,49 @@ type Component struct {
 	Categories   []map[string]string
 }
 
+type InstalledApp struct {
+	InstalledAppID     string            `json:"installedAppId"`
+	InstalledAppType   string            `json:"installedAppType"`
+	InstalledAppStatus string            `json:"installedAppStatus"`
+	DisplayName        string            `json:"displayName"`
+	AppId              string            `json:"appId"`
+	ReferenceID        string            `json:"referenceId"`
+	LocationID         string            `json:"locationId"`
+	Owner              map[string]string `json:"owner"`
+	Notices            []string          `json:"notices"`
+	CreatedDate        string            `json:"createdDate"`
+	LastUpdatedDate    string            `json:"lastUpdatedDate"`
+}
+
+type Subscription struct {
+	ID             string  `json:"id,omitempty"`
+	InstalledAppId string  `json:"installedAppId,omitempty"`
+	SourceType     string  `json:"sourceType,omitempty"`
+	Device         *Device `json:"device,omitempty"`
+}
+
+type Cron struct {
+	Expression string `json:"expression"`
+	Timezone   string `json:"timezone"`
+}
+
+type Rules struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Actions    interface{}
+	Sequence   map[string]string
+	Status     string `json:"status"`
+	TimezoneID string `json:"timezoneId"`
+}
+
+type Schedule struct {
+	ScheduledExecutions []int  `json:"scheduledExecutions"`
+	Name                string `json:"name"`
+	Cron                *Cron  `json:"cron"`
+	InstalledAppID      string `json:"installedAppId"`
+	LocationId          string `json:"locationId"`
+}
+
 type Client struct {
 	token string
 }
@@ -141,26 +184,32 @@ func NewClient(token string) *Client {
 	return &Client{token: token}
 }
 
-func (client *Client) apiGet(endpoint string, queryParams url.Values) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, API+endpoint, nil)
+func (client *Client) ListInstalledApps(params url.Values) ([]*InstalledApp, error) {
+	resp, err := client.apiGet("/installedapps", params)
 	if err != nil {
 		return nil, err
 	}
 
-	queryParams.Encode()
-	req.URL.RawQuery = queryParams.Encode()
-	req.Header.Add("User-Agent", fmt.Sprintf("go-smartthings-%s", Version))
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", client.token))
+	var installedApps []*InstalledApp
+	if _, err := parseListResponse(resp.Body, &installedApps); err != nil {
+		return nil, err
+	}
 
-	resp, err := http.DefaultClient.Do(req)
+	return installedApps, err
+}
+
+func (client *Client) ListApps(params url.Values) ([]*App, error) {
+	resp, err := client.apiGet("/apps", params)
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("failed request: %s", resp.Status)
+
+	var apps []*App
+	if _, err := parseListResponse(resp.Body, &apps); err != nil {
+		return nil, err
 	}
 
-	return resp, nil
+	return apps, err
 }
 
 func (client *Client) ListAllDeviceProfiles(params url.Values) ([]*Profile, error) {
@@ -231,6 +280,70 @@ func (client *Client) ListDevices() ([]*Device, error) {
 	}
 
 	return devices, err
+}
+
+func (client *Client) ListSubscriptions(installedAppId string) ([]*Subscription, error) {
+	resp, err := client.apiGet(fmt.Sprintf("/installedapps/%s/subscriptions", installedAppId), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var subscriptions []*Subscription
+	if _, err := parseListResponse(resp.Body, &subscriptions); err != nil {
+		return nil, err
+	}
+
+	return subscriptions, err
+}
+
+func (client *Client) ListSchedules(installedAppId string) ([]*Schedule, error) {
+	resp, err := client.apiGet(fmt.Sprintf("/installedapps/%s/schedules", installedAppId), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var schedules []*Schedule
+	if _, err := parseListResponse(resp.Body, &schedules); err != nil {
+		return nil, err
+	}
+
+	return schedules, err
+}
+
+func (client *Client) ListRules(params url.Values) ([]*Rules, error) {
+	resp, err := client.apiGet("/rules", params)
+	if err != nil {
+		return nil, err
+	}
+
+	var rules []*Rules
+	if _, err := parseListResponse(resp.Body, &rules); err != nil {
+		return nil, err
+	}
+
+	return rules, err
+}
+
+func (client *Client) apiGet(endpoint string, queryParams url.Values) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, API+endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	queryParams.Encode()
+	req.URL.RawQuery = queryParams.Encode()
+	req.Header.Add("User-Agent", fmt.Sprintf("go-smartthings-%s", Version))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", client.token))
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("failed request: %s", resp.Status)
+	}
+
+	return resp, nil
 }
 
 func parseListResponse(input io.ReadCloser, itemsOut interface{}) (*ListResponse, error) {

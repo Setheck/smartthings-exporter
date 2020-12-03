@@ -1,14 +1,22 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/setheck/smartthings-exporter/smartthings"
+)
+
+var (
+	Version = "dev"
+	Built   = ""
+	Commit  = ""
 )
 
 type Configuration struct {
@@ -17,6 +25,12 @@ type Configuration struct {
 }
 
 func main() {
+	ver := flag.Bool("version", false, "print version and exit")
+	flag.Parse()
+	fmt.Println("version:", Version, "built:", Built, "commit:", Commit)
+	if *ver {
+		os.Exit(0)
+	}
 	log.Println("starting up")
 	var config Configuration
 	if err := envconfig.Process("STE", &config); err != nil {

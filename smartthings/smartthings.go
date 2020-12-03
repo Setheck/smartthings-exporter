@@ -11,6 +11,7 @@ import (
 
 var (
 	Version = "dev"
+	Debug   = false
 
 	API = "https://api.smartthings.com/v1"
 )
@@ -80,6 +81,7 @@ type Device struct {
 	RoomID                 string       `json:"roomId,omitempty"`
 	DeviceTypeID           string       `json:"deviceTypeId,omitempty"`
 	DeviceTypeName         string       `json:"deviceTypeName,omitempty"`
+	DeviceNetworkType      string       `json:"deviceNetworkType,omitempty"`
 	Components             []*Component `json:"components,omitempty"`
 	ChildDevices           []*Device    `json:"childDevices,omitempty"`
 	Profile                *Profile     `json:"profile,omitempty"`
@@ -93,6 +95,10 @@ type Device struct {
 	Type                   string       `json:"type,omitempty"`
 	RestrictionTier        int          `json:"restrictionTier,omitempty"`
 }
+
+type DeviceComponentStatus map[string]DeviceCapabilityStatus
+
+type DeviceCapabilityStatus interface{}
 
 func ToString(obj interface{}) (string, error) {
 	data, err := json.Marshal(obj)
@@ -122,15 +128,21 @@ type Viper struct {
 }
 
 type Capability struct {
-	ID      string `json:"capabilityId"`
-	Version int
+	ID      string `json:"id"`
+	Version int    `json:"version"`
+	Status  string `json:"status"`
 }
 
 type Component struct {
 	ID           string `json:"id"`
-	Label        string
+	Label        string `json:"label"`
 	Capabilities []*Capability
 	Categories   []map[string]string
+}
+
+type HealthState struct {
+	State           string `json:"state"`
+	LastUpdatedDate string `json:"lastUpdatedDate"`
 }
 
 type InstalledApp struct {
@@ -268,6 +280,20 @@ func (client *Client) ListAllCapabilities(params url.Values) ([]*Capability, err
 	return capabilities, err
 }
 
+func (client *Client) GetCapabilitiesByIDAndVersion(capabilityId string, capabilityVersion int) ([]*Capability, error) {
+	resp, err := client.apiGet(fmt.Sprintf("/capabilities/%s/%d", capabilityId, capabilityVersion), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var capabilities []*Capability
+	if _, err := parseListResponse(resp.Body, &capabilities); err != nil {
+		return nil, err
+	}
+
+	return capabilities, err
+}
+
 func (client *Client) ListDevices() ([]*Device, error) {
 	resp, err := client.apiGet("/devices", nil)
 	if err != nil {
@@ -280,6 +306,44 @@ func (client *Client) ListDevices() ([]*Device, error) {
 	}
 
 	return devices, err
+}
+
+func (client *Client) GetFullDeviceStatus(deviceId string) ([]*Component, error) {
+	resp, err := client.apiGet(fmt.Sprintf("/devices/%s/status", deviceId), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var devices []*Component
+	if _, err = parseListResponse(resp.Body, &devices); err != nil {
+		return nil, err
+	}
+
+	return devices, err
+}
+
+func (client *Client) GetDeviceComponentStatus(deviceId, componentId string) (*DeviceComponentStatus, error) {
+	resp, err := client.apiGet(fmt.Sprintf("/devices/%s/components/%s/status", deviceId, componentId), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var deviceComponentStatus *DeviceComponentStatus
+	err = parseResponse(resp.Body, &deviceComponentStatus)
+
+	return deviceComponentStatus, err
+}
+
+func (client *Client) GetCapabilityStatus(deviceId, componentId, capabilityId string) (*DeviceCapabilityStatus, error) {
+	resp, err := client.apiGet(fmt.Sprintf(" /devices/%s/components/%s/capabilities/%s/status", deviceId, componentId, capabilityId), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var devicesCapabilityStatus *DeviceCapabilityStatus
+	err = parseResponse(resp.Body, &devicesCapabilityStatus)
+
+	return devicesCapabilityStatus, err
 }
 
 func (client *Client) ListSubscriptions(installedAppId string) ([]*Subscription, error) {
@@ -340,7 +404,7 @@ func (client *Client) apiGet(endpoint string, queryParams url.Values) (*http.Res
 		return nil, err
 	}
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("failed request: %s", resp.Status)
+		return nil, fmt.Errorf("failed request: %s - %s", req.URL.String(), resp.Status)
 	}
 
 	return resp, nil
@@ -351,6 +415,11 @@ func parseListResponse(input io.ReadCloser, itemsOut interface{}) (*ListResponse
 	if err != nil {
 		return nil, err
 	}
+
+	if Debug {
+		fmt.Println("raw response:", string(raw))
+	}
+
 	var errResponse *ErrorResponse
 	if err := json.Unmarshal(raw, &errResponse); err == nil {
 		if errResponse.Error != nil {
@@ -365,4 +434,28 @@ func parseListResponse(input io.ReadCloser, itemsOut interface{}) (*ListResponse
 
 	err = json.Unmarshal(listResponse.Items, &itemsOut)
 	return listResponse, err
+}
+
+func parseResponse(input io.ReadCloser, Out interface{}) error {
+	raw, err := ioutil.ReadAll(input)
+	if err != nil {
+		return err
+	}
+
+	if Debug {
+		fmt.Println("raw response:", string(raw))
+	}
+
+	var errResponse *ErrorResponse
+	if err := json.Unmarshal(raw, &errResponse); err == nil {
+		if errResponse.Error != nil {
+			return errResponse.Error
+		}
+	}
+
+	if err := json.Unmarshal(raw, &Out); err != nil {
+		return err
+	}
+
+	return nil
 }

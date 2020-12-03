@@ -96,9 +96,11 @@ type Device struct {
 	RestrictionTier        int          `json:"restrictionTier,omitempty"`
 }
 
-type DeviceComponentStatus map[string]DeviceCapabilityStatus
+type ComponentStatus map[string]ComponentAttributes
 
-type DeviceCapabilityStatus interface{}
+type ComponentAttributes map[string]ComponentProperties
+
+type ComponentProperties map[string]interface{}
 
 func ToString(obj interface{}) (string, error) {
 	data, err := json.Marshal(obj)
@@ -322,28 +324,28 @@ func (client *Client) GetFullDeviceStatus(deviceId string) ([]*Component, error)
 	return devices, err
 }
 
-func (client *Client) GetDeviceComponentStatus(deviceId, componentId string) (*DeviceComponentStatus, error) {
+func (client *Client) GetDeviceComponentStatus(deviceId, componentId string) (ComponentStatus, error) {
 	resp, err := client.apiGet(fmt.Sprintf("/devices/%s/components/%s/status", deviceId, componentId), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var deviceComponentStatus *DeviceComponentStatus
+	var deviceComponentStatus ComponentStatus
 	err = parseResponse(resp.Body, &deviceComponentStatus)
 
 	return deviceComponentStatus, err
 }
 
-func (client *Client) GetCapabilityStatus(deviceId, componentId, capabilityId string) (*DeviceCapabilityStatus, error) {
+func (client *Client) GetCapabilityStatus(deviceId, componentId, capabilityId string) (*ComponentAttributes, error) {
 	resp, err := client.apiGet(fmt.Sprintf(" /devices/%s/components/%s/capabilities/%s/status", deviceId, componentId, capabilityId), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var devicesCapabilityStatus *DeviceCapabilityStatus
-	err = parseResponse(resp.Body, &devicesCapabilityStatus)
+	var attributes *ComponentAttributes
+	err = parseResponse(resp.Body, &attributes)
 
-	return devicesCapabilityStatus, err
+	return attributes, err
 }
 
 func (client *Client) ListSubscriptions(installedAppId string) ([]*Subscription, error) {

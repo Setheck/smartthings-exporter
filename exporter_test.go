@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/setheck/smartthings-exporter/smartthings"
 )
@@ -36,11 +37,27 @@ func TestPlayground(t *testing.T) {
 
 	for _, device := range devices {
 		for _, component := range device.Components {
-			_, err := client.GetDeviceComponentStatus(device.DeviceID, component.ID)
+			cs, err := client.GetDeviceComponentStatus(device.DeviceID, component.ID)
 			if err != nil {
 				fmt.Println(err)
 				//t.Fatal(err)
+			} else {
+				//fmt.Println(cs)
+				for capabilityId, attributes := range cs {
+					for attributeId, properties := range attributes {
+						if value, ok := properties["value"]; ok {
+							fmt.Println("capabilityId:", capabilityId, "attribute:", attributeId, "value:", value)
+						}
+					}
+				}
 			}
 		}
 	}
+}
+
+func TestParseTime(t *testing.T) {
+	t.SkipNow()
+	ts := "2020-12-03T06:41:54.441Z"
+	tm, _ := time.Parse(time.RFC3339Nano, ts)
+	fmt.Println(tm.UnixNano() / int64(time.Millisecond))
 }

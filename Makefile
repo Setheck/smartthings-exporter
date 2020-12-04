@@ -17,6 +17,10 @@ dbuild:
 	docker build . -t ${IMAGE}:latest
 	docker run --rm ${IMAGE}:latest -version
 
+dbuild-arm:
+	docker build --platform linux/arm/v7 --tag ${IMAGE}:latest --output type=image,push=true .
+
+
 drun: dbuild
 	docker run --rm -p 8080:8080 ${IMAGE}:latest
 

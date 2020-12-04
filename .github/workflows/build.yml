@@ -31,5 +31,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build
-        run: |
-          docker build .
+        run: make dbuild-arm

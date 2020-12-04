@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/setheck/smartthings-exporter/smartthings"
@@ -82,11 +81,11 @@ func (collector *Collector) Collect(metrics chan<- prometheus.Metric) {
 										values = append(values, fmt.Sprint(v))
 									}
 								case "timestamp":
-									if tm, err := time.Parse(time.RFC3339Nano, fmt.Sprint(value)); err == nil {
-										tsMillis := tm.UnixNano() / int64(time.Millisecond)
-										labels = append(labels, name)
-										values = append(values, fmt.Sprint(tsMillis))
-									}
+									//if tm, err := time.Parse(time.RFC3339Nano, fmt.Sprint(value)); err == nil {
+									//	tsMillis := tm.UnixNano() / int64(time.Millisecond)
+									//	labels = append(labels, name)
+									//	values = append(values, fmt.Sprint(tsMillis))
+									//}
 								default:
 									labels = append(labels, name)
 									values = append(values, fmt.Sprint(value))

@@ -31,4 +31,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build
-        run: make dbuild-arm
+        run: make dbuild-arm && make dpush

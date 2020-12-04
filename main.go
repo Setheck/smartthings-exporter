@@ -20,7 +20,7 @@ var (
 )
 
 type Configuration struct {
-	Port     int    `envconfig:"PORT" default:"8080"`
+	Port     int    `envconfig:"PORT" default:"9119"`
 	ApiToken string `envconfig:"API_TOKEN"`
 }
 

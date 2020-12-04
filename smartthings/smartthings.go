@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 var (
@@ -195,7 +196,7 @@ type Client struct {
 }
 
 func NewClient(token string) *Client {
-	return &Client{token: token}
+	return &Client{token: strings.TrimSpace(token)}
 }
 
 func (client *Client) ListInstalledApps(params url.Values) ([]*InstalledApp, error) {

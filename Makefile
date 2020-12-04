@@ -9,7 +9,7 @@ LDFLAGS=-ldflags "-w -s -X ${BASE_PKG}/Version=${VERSION} -X ${BASE_PKG}/Built=$
 test:
 	go test ./... -cover
 
-build: test
+build:
 	go build ${LDFLAGS} .
 
 dbuild:

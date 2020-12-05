@@ -1,14 +1,11 @@
-name: Build
+name: Release
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    tags:
+      - "v0.[0-9]+.[0-9]+"
 
 jobs:
-  build:
+  build-arm:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,8 +21,11 @@ jobs:
       - name: Available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
 
-      - name: Build-x86
-        run: make dbuild
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build-arm
-        run: make dbuild-arm
+      - name: Build
+        run: make dbuild-arm && make dpush

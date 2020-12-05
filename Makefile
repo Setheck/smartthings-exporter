@@ -4,9 +4,9 @@ BUILT:=$(shell date +%FT%T%z)
 BASE_PKG:=github.com/setheck/smartthings-exporter
 IMAGE:=setheck/smartthings-exporter
 
-LDFLAGS=-ldflags "-w -s -X ${BASE_PKG}/Version=${VERSION} \
-				        -X ${BASE_PKG}/Built=${BUILT} \
-				        -X ${BASE_PKG}/Commit=${COMMIT}"
+LDFLAGS=-ldflags "-w -s -X main.Version=${VERSION} \
+				        -X main.Built=${BUILT} \
+				        -X main.Commit=${COMMIT}"
 
 test:
 	go test ./... -cover
@@ -27,7 +27,7 @@ dpush:
 	docker push ${IMAGE}:latest
 
 drun: dbuild
-	docker run --rm -p 8080:8080 ${IMAGE}:latest
+	docker run --rm -p 9119:9119 ${IMAGE}:latest
 
 tag: MAJOR=0
 tag: MINOR=0

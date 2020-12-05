@@ -38,7 +38,7 @@ func main() {
 	}
 
 	log.Println("creating client")
-	client := smartthings.NewClient(config.ApiToken)
+	client := smartthings.NewDefaultClient(config.ApiToken)
 	if _, err := client.ListDevices(); err != nil {
 		log.Fatal("failed to initialize client:", err)
 	}

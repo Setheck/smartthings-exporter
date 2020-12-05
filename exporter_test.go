@@ -12,7 +12,7 @@ import (
 func TestPlayground(t *testing.T) {
 	t.SkipNow()
 
-	client := smartthings.NewClient(os.Getenv("STE_API_TOKEN"))
+	client := smartthings.NewDefaultClient(os.Getenv("STE_API_TOKEN"))
 	//caps, err := client.ListAllCapabilities(nil)
 	//if err != nil {
 	//	t.Fatal(err)

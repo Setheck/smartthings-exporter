@@ -12,10 +12,27 @@ import (
 
 var (
 	Version = "dev"
-	Debug   = false
+	debug   = false
 
 	API = "https://api.smartthings.com/v1"
 )
+
+type Client interface {
+	ListInstalledApps(params url.Values) ([]*InstalledApp, error)
+	ListApps(params url.Values) ([]*App, error)
+	ListAllDeviceProfiles(params url.Values) ([]*Profile, error)
+	ListRooms(locationId string) ([]*Room, error)
+	ListLocations(params url.Values) ([]*Location, error)
+	ListAllCapabilities(params url.Values) ([]*Capability, error)
+	GetCapabilitiesByIDAndVersion(capabilityId string, capabilityVersion int) ([]*Capability, error)
+	ListDevices() ([]*Device, error)
+	GetFullDeviceStatus(deviceId string) ([]*Component, error)
+	GetDeviceComponentStatus(deviceId, componentId string) (ComponentStatus, error)
+	GetCapabilityStatus(deviceId, componentId, capabilityId string) (*ComponentAttributes, error)
+	ListSubscriptions(installedAppId string) ([]*Subscription, error)
+	ListSchedules(installedAppId string) ([]*Schedule, error)
+	ListRules(params url.Values) ([]*Rules, error)
+}
 
 type ErrorResponse struct {
 	RequestID string `json:"requestId"`
@@ -35,7 +52,7 @@ func (e *Error) Error() string {
 
 type ListResponse struct {
 	Items       json.RawMessage `json:"items"`
-	PagingLinks `json:"_links"`
+	PagingLinks PagingLinks     `json:"_links"`
 }
 
 type PagingLinks struct {
@@ -117,18 +134,12 @@ type Room struct {
 	Name       string `json:"name"`
 }
 
-type Ble struct {
-}
-type BleD2D struct {
-}
-type Dth struct {
-}
-type Ir struct {
-}
-type IrOcf struct {
-}
-type Viper struct {
-}
+type Ble struct{}
+type BleD2D struct{}
+type Dth struct{}
+type Ir struct{}
+type IrOcf struct{}
+type Viper struct{}
 
 type Capability struct {
 	ID      string `json:"id"`
@@ -191,15 +202,17 @@ type Schedule struct {
 	LocationId          string `json:"locationId"`
 }
 
-type Client struct {
+var _ Client = &DefaultClient{}
+
+type DefaultClient struct {
 	token string
 }
 
-func NewClient(token string) *Client {
-	return &Client{token: strings.TrimSpace(token)}
+func NewDefaultClient(token string) Client {
+	return &DefaultClient{token: strings.TrimSpace(token)}
 }
 
-func (client *Client) ListInstalledApps(params url.Values) ([]*InstalledApp, error) {
+func (client *DefaultClient) ListInstalledApps(params url.Values) ([]*InstalledApp, error) {
 	resp, err := client.apiGet("/installedapps", params)
 	if err != nil {
 		return nil, err
@@ -213,7 +226,7 @@ func (client *Client) ListInstalledApps(params url.Values) ([]*InstalledApp, err
 	return installedApps, err
 }
 
-func (client *Client) ListApps(params url.Values) ([]*App, error) {
+func (client *DefaultClient) ListApps(params url.Values) ([]*App, error) {
 	resp, err := client.apiGet("/apps", params)
 	if err != nil {
 		return nil, err
@@ -227,7 +240,7 @@ func (client *Client) ListApps(params url.Values) ([]*App, error) {
 	return apps, err
 }
 
-func (client *Client) ListAllDeviceProfiles(params url.Values) ([]*Profile, error) {
+func (client *DefaultClient) ListAllDeviceProfiles(params url.Values) ([]*Profile, error) {
 	resp, err := client.apiGet("/deviceprofiles", params)
 	if err != nil {
 		return nil, err
@@ -241,7 +254,7 @@ func (client *Client) ListAllDeviceProfiles(params url.Values) ([]*Profile, erro
 	return profile, err
 }
 
-func (client *Client) ListRooms(locationId string) ([]*Room, error) {
+func (client *DefaultClient) ListRooms(locationId string) ([]*Room, error) {
 	resp, err := client.apiGet(fmt.Sprintf("/locations/%s/rooms", locationId), nil)
 	if err != nil {
 		return nil, err
@@ -255,7 +268,7 @@ func (client *Client) ListRooms(locationId string) ([]*Room, error) {
 	return rooms, err
 }
 
-func (client *Client) ListLocations(params url.Values) ([]*Location, error) {
+func (client *DefaultClient) ListLocations(params url.Values) ([]*Location, error) {
 	resp, err := client.apiGet("/locations", params)
 	if err != nil {
 		return nil, err
@@ -269,7 +282,7 @@ func (client *Client) ListLocations(params url.Values) ([]*Location, error) {
 	return locations, err
 }
 
-func (client *Client) ListAllCapabilities(params url.Values) ([]*Capability, error) {
+func (client *DefaultClient) ListAllCapabilities(params url.Values) ([]*Capability, error) {
 	resp, err := client.apiGet("/capabilities", params)
 	if err != nil {
 		return nil, err
@@ -283,7 +296,7 @@ func (client *Client) ListAllCapabilities(params url.Values) ([]*Capability, err
 	return capabilities, err
 }
 
-func (client *Client) GetCapabilitiesByIDAndVersion(capabilityId string, capabilityVersion int) ([]*Capability, error) {
+func (client *DefaultClient) GetCapabilitiesByIDAndVersion(capabilityId string, capabilityVersion int) ([]*Capability, error) {
 	resp, err := client.apiGet(fmt.Sprintf("/capabilities/%s/%d", capabilityId, capabilityVersion), nil)
 	if err != nil {
 		return nil, err
@@ -297,7 +310,7 @@ func (client *Client) GetCapabilitiesByIDAndVersion(capabilityId string, capabil
 	return capabilities, err
 }
 
-func (client *Client) ListDevices() ([]*Device, error) {
+func (client *DefaultClient) ListDevices() ([]*Device, error) {
 	resp, err := client.apiGet("/devices", nil)
 	if err != nil {
 		return nil, err
@@ -311,7 +324,7 @@ func (client *Client) ListDevices() ([]*Device, error) {
 	return devices, err
 }
 
-func (client *Client) GetFullDeviceStatus(deviceId string) ([]*Component, error) {
+func (client *DefaultClient) GetFullDeviceStatus(deviceId string) ([]*Component, error) {
 	resp, err := client.apiGet(fmt.Sprintf("/devices/%s/status", deviceId), nil)
 	if err != nil {
 		return nil, err
@@ -325,7 +338,7 @@ func (client *Client) GetFullDeviceStatus(deviceId string) ([]*Component, error)
 	return devices, err
 }
 
-func (client *Client) GetDeviceComponentStatus(deviceId, componentId string) (ComponentStatus, error) {
+func (client *DefaultClient) GetDeviceComponentStatus(deviceId, componentId string) (ComponentStatus, error) {
 	resp, err := client.apiGet(fmt.Sprintf("/devices/%s/components/%s/status", deviceId, componentId), nil)
 	if err != nil {
 		return nil, err
@@ -337,7 +350,7 @@ func (client *Client) GetDeviceComponentStatus(deviceId, componentId string) (Co
 	return deviceComponentStatus, err
 }
 
-func (client *Client) GetCapabilityStatus(deviceId, componentId, capabilityId string) (*ComponentAttributes, error) {
+func (client *DefaultClient) GetCapabilityStatus(deviceId, componentId, capabilityId string) (*ComponentAttributes, error) {
 	resp, err := client.apiGet(fmt.Sprintf(" /devices/%s/components/%s/capabilities/%s/status", deviceId, componentId, capabilityId), nil)
 	if err != nil {
 		return nil, err
@@ -349,7 +362,7 @@ func (client *Client) GetCapabilityStatus(deviceId, componentId, capabilityId st
 	return attributes, err
 }
 
-func (client *Client) ListSubscriptions(installedAppId string) ([]*Subscription, error) {
+func (client *DefaultClient) ListSubscriptions(installedAppId string) ([]*Subscription, error) {
 	resp, err := client.apiGet(fmt.Sprintf("/installedapps/%s/subscriptions", installedAppId), nil)
 	if err != nil {
 		return nil, err
@@ -363,7 +376,7 @@ func (client *Client) ListSubscriptions(installedAppId string) ([]*Subscription,
 	return subscriptions, err
 }
 
-func (client *Client) ListSchedules(installedAppId string) ([]*Schedule, error) {
+func (client *DefaultClient) ListSchedules(installedAppId string) ([]*Schedule, error) {
 	resp, err := client.apiGet(fmt.Sprintf("/installedapps/%s/schedules", installedAppId), nil)
 	if err != nil {
 		return nil, err
@@ -377,7 +390,7 @@ func (client *Client) ListSchedules(installedAppId string) ([]*Schedule, error) 
 	return schedules, err
 }
 
-func (client *Client) ListRules(params url.Values) ([]*Rules, error) {
+func (client *DefaultClient) ListRules(params url.Values) ([]*Rules, error) {
 	resp, err := client.apiGet("/rules", params)
 	if err != nil {
 		return nil, err
@@ -391,7 +404,7 @@ func (client *Client) ListRules(params url.Values) ([]*Rules, error) {
 	return rules, err
 }
 
-func (client *Client) apiGet(endpoint string, queryParams url.Values) (*http.Response, error) {
+func (client *DefaultClient) apiGet(endpoint string, queryParams url.Values) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, API+endpoint, nil)
 	if err != nil {
 		return nil, err
@@ -419,15 +432,12 @@ func parseListResponse(input io.ReadCloser, itemsOut interface{}) (*ListResponse
 		return nil, err
 	}
 
-	if Debug {
+	if debug {
 		fmt.Println("raw response:", string(raw))
 	}
 
-	var errResponse *ErrorResponse
-	if err := json.Unmarshal(raw, &errResponse); err == nil {
-		if errResponse.Error != nil {
-			return nil, errResponse.Error
-		}
+	if err := checkErrorResponse(raw); err != nil {
+		return nil, err
 	}
 
 	var listResponse *ListResponse
@@ -445,20 +455,27 @@ func parseResponse(input io.ReadCloser, Out interface{}) error {
 		return err
 	}
 
-	if Debug {
+	if debug {
 		fmt.Println("raw response:", string(raw))
 	}
 
-	var errResponse *ErrorResponse
-	if err := json.Unmarshal(raw, &errResponse); err == nil {
-		if errResponse.Error != nil {
-			return errResponse.Error
-		}
+	if err := checkErrorResponse(raw); err != nil {
+		return err
 	}
 
 	if err := json.Unmarshal(raw, &Out); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func checkErrorResponse(data []byte) error {
+	var errResponse *ErrorResponse
+	if err := json.Unmarshal(data, &errResponse); err == nil {
+		if errResponse.Error != nil {
+			return errResponse.Error
+		}
+	}
 	return nil
 }

@@ -4,7 +4,9 @@ BUILT:=$(shell date +%FT%T%z)
 BASE_PKG:=github.com/setheck/smartthings-exporter
 IMAGE:=setheck/smartthings-exporter
 
-LDFLAGS=-ldflags "-w -s -X ${BASE_PKG}/Version=${VERSION} -X ${BASE_PKG}/Built=${BUILT} -X ${BASE_PKG}/Commit=${COMMIT}"
+LDFLAGS=-ldflags "-w -s -X ${BASE_PKG}/Version=${VERSION} \
+				        -X ${BASE_PKG}/Built=${BUILT} \
+				        -X ${BASE_PKG}/Commit=${COMMIT}"
 
 test:
 	go test ./... -cover

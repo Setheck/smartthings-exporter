@@ -24,8 +24,11 @@ type Configuration struct {
 	ApiToken string `envconfig:"API_TOKEN"`
 }
 
+var (
+	ver = flag.Bool("version", false, "print version and exit")
+)
+
 func main() {
-	ver := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 	fmt.Println("version:", Version, "built:", Built, "commit:", Commit)
 	if *ver {

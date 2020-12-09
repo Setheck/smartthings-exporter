@@ -61,16 +61,16 @@ type PagingLinks struct {
 }
 
 type Location struct {
-	ID               string
-	Name             string
-	CountryCode      string
-	Latitude         float32
-	Longitude        float32
-	RegionRadius     int
-	TemperatureScale string
-	TimeZoneID       string
-	Locale           string
-	Parent           map[string]string
+	ID               string            `json:"id"`
+	Name             string            `json:"name"`
+	CountryCode      string            `json:"countryCode"`
+	Latitude         float32           `json:"latitude"`
+	Longitude        float32           `json:"longitude"`
+	RegionRadius     int               `json:"regionRadius"`
+	TemperatureScale string            `json:"temperatureScale"`
+	TimeZoneID       string            `json:"timeZoneId"`
+	Locale           string            `json:"locale"`
+	Parent           map[string]string `json:"parent"`
 }
 
 type Profile struct {
@@ -82,9 +82,9 @@ type Profile struct {
 }
 
 type App struct {
-	InstalledAppID string
-	ExternalID     string
-	*Profile
+	InstalledAppID string   `json:"installedAppId"`
+	ExternalID     string   `json:"externalId"`
+	Profile        *Profile `json:"profile"`
 }
 
 type Device struct {

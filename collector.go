@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strconv"
@@ -22,7 +23,10 @@ func (collector *Collector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (collector *Collector) Collect(metrics chan<- prometheus.Metric) {
-	devices, err := collector.client.ListDevices()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	devices, err := collector.client.ListDevices(ctx)
 	if err != nil {
 		log.Println(err)
 		return
@@ -51,7 +55,7 @@ func (collector *Collector) Collect(metrics chan<- prometheus.Metric) {
 		}
 
 		for _, component := range device.Components {
-			componentStatus, err := collector.client.GetDeviceComponentStatus(device.DeviceID, component.ID)
+			componentStatus, err := collector.client.GetDeviceComponentStatus(ctx, device.DeviceID, component.ID)
 			if err != nil {
 				log.Println(err)
 				return
@@ -62,13 +66,11 @@ func (collector *Collector) Collect(metrics chan<- prometheus.Metric) {
 	}
 }
 
-func componentMetrics(deviceId string, status smartthings.ComponentStatus, metrics chan<- prometheus.Metric) {
-	for componentId, attributes := range status {
+func componentMetrics(deviceId string, componentStatus smartthings.ComponentStatus, metrics chan<- prometheus.Metric) {
+	for componentId, attributes := range componentStatus {
 		for attributeId, properties := range attributes {
-			labels := []string{"deviceId"}
-			values := []string{deviceId}
-			labels = append(labels, "componentId")
-			values = append(values, componentId)
+			labels := []string{"deviceId", "componentId"}
+			values := []string{deviceId, componentId}
 
 			var extras map[string]string
 			metricValue := float64(0)
@@ -93,7 +95,7 @@ func componentMetrics(deviceId string, status smartthings.ComponentStatus, metri
 			}
 
 			if m, err := prometheus.NewConstMetric(
-				prometheus.NewDesc("smartthings_attribute_"+attributeId, "", labels, nil),
+				prometheus.NewDesc(fmt.Sprint("smartthings_attribute_", attributeId), "", labels, nil),
 				prometheus.GaugeValue,
 				metricValue,
 				values...); err == nil {

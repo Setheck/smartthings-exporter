@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -30,14 +31,14 @@ func TestPlayground(t *testing.T) {
 	//}
 	//fmt.Println(smartthings.ToString(prof))
 
-	devices, err := client.ListDevices()
+	devices, err := client.ListDevices(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for _, device := range devices {
 		for _, component := range device.Components {
-			cs, err := client.GetDeviceComponentStatus(device.DeviceID, component.ID)
+			cs, err := client.GetDeviceComponentStatus(context.TODO(), device.DeviceID, component.ID)
 			if err != nil {
 				fmt.Println(err)
 				//t.Fatal(err)

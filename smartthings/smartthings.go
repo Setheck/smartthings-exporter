@@ -420,7 +420,12 @@ func (client *DefaultClient) apiGet(ctx context.Context, endpoint string, queryP
 	if err != nil {
 		return nil, err
 	}
+
 	if resp.StatusCode >= 400 {
+		if err := checkErrorResponse(resp.Body); err != nil {
+			return nil, err
+		}
+
 		return nil, fmt.Errorf("failed request: %s - %s", req.URL.String(), resp.Status)
 	}
 
@@ -435,10 +440,6 @@ func parseListResponse(input io.ReadCloser, itemsOut interface{}) (*ListResponse
 
 	if debug {
 		fmt.Println("raw response:", string(raw))
-	}
-
-	if err := checkErrorResponse(raw); err != nil {
-		return nil, err
 	}
 
 	var listResponse *ListResponse
@@ -460,10 +461,6 @@ func parseResponse(input io.ReadCloser, Out interface{}) error {
 		fmt.Println("raw response:", string(raw))
 	}
 
-	if err := checkErrorResponse(raw); err != nil {
-		return err
-	}
-
 	if err := json.Unmarshal(raw, &Out); err != nil {
 		return err
 	}
@@ -471,12 +468,18 @@ func parseResponse(input io.ReadCloser, Out interface{}) error {
 	return nil
 }
 
-func checkErrorResponse(data []byte) error {
+func checkErrorResponse(r io.ReadCloser) error {
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+
 	var errResponse *ErrorResponse
 	if err := json.Unmarshal(data, &errResponse); err == nil {
 		if errResponse.Error != nil {
 			return errResponse.Error
 		}
 	}
+
 	return nil
 }

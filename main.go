@@ -60,10 +60,15 @@ func main() {
 	collector := NewCollector(client)
 
 	prometheus.MustRegister(collector)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "OK") })
+	http.HandleFunc("/", rootHandler)
 	http.Handle("/metrics", promhttp.Handler())
 
 	addr := fmt.Sprintf("0.0.0.0:%d", config.Port)
 	log.Println("starting server on", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
+}
+
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO:(smt) default page with info and usage etc...
+	fmt.Fprint(w, "OK")
 }

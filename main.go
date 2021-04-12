@@ -40,7 +40,10 @@ var (
 
 func main() {
 	flag.Parse()
-	fmt.Println(Banner, "\nversion:", Version, "\n  built:", Built, "\n commit:", Commit)
+	fmt.Println(Banner)
+	fmt.Println("version:", Version)
+	fmt.Println("  built:", Built)
+	fmt.Println(" commit:", Commit)
 	if *ver {
 		os.Exit(0)
 	}

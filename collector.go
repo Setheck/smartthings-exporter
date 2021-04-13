@@ -138,6 +138,13 @@ func parseValue(attributeId string, value interface{}) (map[string]string, float
 			}
 			extras["status"] = str
 		}
+	case "contactSensor":
+		if str, ok := value.(string); ok {
+			if str == "open" {
+				resultValue = 1
+			}
+			extras["state"] = str
+		}
 	default:
 		switch value.(type) {
 		case float64:

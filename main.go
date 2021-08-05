@@ -55,7 +55,7 @@ func main() {
 	}
 
 	log.Println("creating client")
-	client := smartthings.NewDefaultClient(config.ApiToken)
+	client := smartthings.NewClient(config.ApiToken, nil)
 	if _, err := client.ListDevices(context.Background()); err != nil {
 		log.Fatal("failed to initialize client:", err)
 	}
@@ -72,7 +72,9 @@ func main() {
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
-func rootHandler(w http.ResponseWriter, r *http.Request) {
+func rootHandler(w http.ResponseWriter, _ *http.Request) {
 	// TODO:(smt) default page with info and usage etc...
-	fmt.Fprint(w, "OK")
+	if _, err := fmt.Fprint(w, "OK"); err != nil {
+		log.Println("responding to root handler request failed:", err)
+	}
 }

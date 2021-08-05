@@ -11,10 +11,15 @@ import (
 )
 
 type Collector struct {
-	client smartthings.Client
+	client SmartthingsClient
 }
 
-func NewCollector(client smartthings.Client) *Collector {
+type SmartthingsClient interface {
+	ListDevices(ctx context.Context) ([]*smartthings.Device, error)
+	GetDeviceComponentStatus(ctx context.Context, deviceId, componentId string) (smartthings.ComponentStatus, error)
+}
+
+func NewCollector(client SmartthingsClient) *Collector {
 	return &Collector{client: client}
 }
 
@@ -146,15 +151,14 @@ func parseValue(attributeId string, value interface{}) (map[string]string, float
 			extras["state"] = str
 		}
 	default:
-		switch value.(type) {
+		switch typedValue := value.(type) {
 		case float64:
-			resultValue = value.(float64)
+			resultValue = typedValue
 		case string:
 			var err error
-			strValue := value.(string)
-			resultValue, err = strconv.ParseFloat(strValue, 64)
+			resultValue, err = strconv.ParseFloat(typedValue, 64)
 			if err != nil {
-				extras["value"] = strValue
+				extras["value"] = typedValue
 			}
 		}
 	}

@@ -159,7 +159,7 @@ type Schedule struct {
 	Name                string `json:"name"`
 	Cron                *Cron  `json:"cron"`
 	InstalledAppID      string `json:"installedAppId"`
-	LocationId          string `json:"locationId"`
+	LocationID          string `json:"locationId"`
 }
 
 type Client struct {

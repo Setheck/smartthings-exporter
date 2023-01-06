@@ -11,10 +11,15 @@ import (
 )
 
 type Collector struct {
-	client smartthings.Client
+	client SmartthingsClient
 }
 
-func NewCollector(client smartthings.Client) *Collector {
+type SmartthingsClient interface {
+	ListDevices(ctx context.Context) ([]*smartthings.Device, error)
+	GetDeviceComponentStatus(ctx context.Context, deviceId, componentId string) (smartthings.ComponentStatus, error)
+}
+
+func NewCollector(client SmartthingsClient) *Collector {
 	return &Collector{client: client}
 }
 
@@ -27,46 +32,48 @@ func (collector *Collector) Collect(metrics chan<- prometheus.Metric) {
 	defer cancel()
 
 	devices, err := collector.client.ListDevices(ctx)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	if err == nil {
+		for _, device := range devices {
+			registerDeviceMetrics(device, metrics)
 
-	for _, device := range devices {
-		if m, err := prometheus.NewConstMetric(
-			prometheus.NewDesc("smartthings_device",
-				"a registered device",
-				[]string{"deviceId", "deviceLabel", "name"}, nil),
-			prometheus.GaugeValue,
-			1,
-			device.DeviceID, device.Label, device.Name); err == nil {
-
-			metrics <- m
-		}
-		if m, err := prometheus.NewConstMetric(
-			prometheus.NewDesc("smartthings_device_info",
-				"information about the device",
-				[]string{"deviceId", "manufacturerName", "deviceManufacturerCode", "deviceTypeId", "deviceNetworkType"}, nil),
-			prometheus.GaugeValue,
-			1,
-			device.DeviceID, device.ManufacturerName, device.DeviceManufacturerCode, device.DeviceTypeID, device.DeviceNetworkType); err == nil {
-
-			metrics <- m
-		}
-
-		for _, component := range device.Components {
-			componentStatus, err := collector.client.GetDeviceComponentStatus(ctx, device.DeviceID, component.ID)
-			if err != nil {
-				log.Println(err)
-				return
+			for _, component := range device.Components {
+				componentStatus, err := collector.client.GetDeviceComponentStatus(ctx, device.DeviceID, component.ID)
+				if err == nil {
+					registerComponentMetrics(device.DeviceID, componentStatus, metrics)
+				} else {
+					log.Println("getDeviceComponentStatus deviceID:", device.DeviceID, "componentID:", component.ID, "failed, error:", err)
+				}
 			}
-
-			componentMetrics(device.DeviceID, componentStatus, metrics)
 		}
+	} else {
+		log.Println("listDevices failed, error:", err)
 	}
 }
 
-func componentMetrics(deviceId string, componentStatus smartthings.ComponentStatus, metrics chan<- prometheus.Metric) {
+func registerDeviceMetrics(device *smartthings.Device, metrics chan<- prometheus.Metric) {
+	if m, err := prometheus.NewConstMetric(
+		prometheus.NewDesc("smartthings_device",
+			"a registered device",
+			[]string{"deviceId", "deviceLabel", "name"}, nil),
+		prometheus.GaugeValue,
+		1,
+		device.DeviceID, device.Label, device.Name); err == nil {
+
+		metrics <- m
+	}
+	if m, err := prometheus.NewConstMetric(
+		prometheus.NewDesc("smartthings_device_info",
+			"information about the device",
+			[]string{"deviceId", "manufacturerName", "deviceManufacturerCode", "deviceTypeId", "deviceNetworkType"}, nil),
+		prometheus.GaugeValue,
+		1,
+		device.DeviceID, device.ManufacturerName, device.DeviceManufacturerCode, device.DeviceTypeID, device.DeviceNetworkType); err == nil {
+
+		metrics <- m
+	}
+}
+
+func registerComponentMetrics(deviceId string, componentStatus smartthings.ComponentStatus, metrics chan<- prometheus.Metric) {
 	for componentId, attributes := range componentStatus {
 		for attributeId, properties := range attributes {
 			labels := []string{"deviceId", "componentId"}
@@ -146,15 +153,14 @@ func parseValue(attributeId string, value interface{}) (map[string]string, float
 			extras["state"] = str
 		}
 	default:
-		switch value.(type) {
+		switch typedValue := value.(type) {
 		case float64:
-			resultValue = value.(float64)
+			resultValue = typedValue
 		case string:
 			var err error
-			strValue := value.(string)
-			resultValue, err = strconv.ParseFloat(strValue, 64)
+			resultValue, err = strconv.ParseFloat(typedValue, 64)
 			if err != nil {
-				extras["value"] = strValue
+				extras["value"] = typedValue
 			}
 		}
 	}

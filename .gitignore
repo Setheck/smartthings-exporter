@@ -14,3 +14,7 @@ smartthings-exporter
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# ide
+.vscode
+.idea

@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "appName": "security-home-monitor",
+      "appId": "c71b0a5b-7dab-41fe-b75f-7cf30246468e",
+      "appType": "WEBHOOK_SMART_APP",
+      "displayName": "Security Home Monitor",
+      "description": "An intergration that leverages all security devices in your home - cameras, motion sensors, etc to provide\nyou with peace of mind and #security.\n",
+      "iconImage": {
+        "url": "https://smart-home-monitor.com/image"
+      },
+      "owner": {
+        "ownerType": "USER",
+        "ownerId": "3f178632-79ed-4358-94de-280dbd7c206c"
+      },
+      "createdDate": "2021-08-05T05:18:28.448Z",
+      "lastUpdatedDate": "2021-08-05T05:18:28.448Z"
+    }
+  ],
+  "_links": {
+    "next": {
+      "href": "https://..."
+    },
+    "previous": {
+      "href": "https://..."
+    }
+  }
+}

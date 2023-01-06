@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -17,39 +16,6 @@ var (
 )
 
 const API = "https://api.smartthings.com/v1"
-
-type Client interface {
-	ListInstalledApps(ctx context.Context, params url.Values) ([]*InstalledApp, error)
-	ListApps(ctx context.Context, params url.Values) ([]*App, error)
-	ListAllDeviceProfiles(ctx context.Context, params url.Values) ([]*Profile, error)
-	ListRooms(ctx context.Context, locationId string) ([]*Room, error)
-	ListLocations(ctx context.Context, params url.Values) ([]*Location, error)
-	ListAllCapabilities(ctx context.Context, params url.Values) ([]*Capability, error)
-	GetCapabilitiesByIDAndVersion(ctx context.Context, capabilityId string, capabilityVersion int) ([]*Capability, error)
-	ListDevices(ctx context.Context) ([]*Device, error)
-	GetFullDeviceStatus(ctx context.Context, deviceId string) ([]*Component, error)
-	GetDeviceComponentStatus(ctx context.Context, deviceId, componentId string) (ComponentStatus, error)
-	GetCapabilityStatus(ctx context.Context, deviceId, componentId, capabilityId string) (*ComponentAttributes, error)
-	ListSubscriptions(ctx context.Context, installedAppId string) ([]*Subscription, error)
-	ListSchedules(ctx context.Context, installedAppId string) ([]*Schedule, error)
-	ListRules(ctx context.Context, params url.Values) ([]*Rules, error)
-}
-
-type ErrorResponse struct {
-	RequestID string `json:"requestId"`
-	Error     *Error `json:"error"`
-}
-
-type Error struct {
-	Code    string   `json:"code"`
-	Message string   `json:"message"`
-	Target  string   `json:"target"`
-	Details []*Error `json:"details"`
-}
-
-func (e *Error) Error() string {
-	return fmt.Sprint(e.Code, e.Message, e.Target)
-}
 
 type ListResponse struct {
 	Items       json.RawMessage `json:"items"`
@@ -120,14 +86,6 @@ type ComponentStatus map[string]ComponentAttributes
 type ComponentAttributes map[string]ComponentProperties
 
 type ComponentProperties map[string]interface{}
-
-func ToString(obj interface{}) (string, error) {
-	data, err := json.Marshal(obj)
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
 
 type Room struct {
 	ID         string `json:"roomId"`
@@ -200,20 +158,25 @@ type Schedule struct {
 	Name                string `json:"name"`
 	Cron                *Cron  `json:"cron"`
 	InstalledAppID      string `json:"installedAppId"`
-	LocationId          string `json:"locationId"`
+	LocationID          string `json:"locationId"`
 }
 
-var _ Client = &DefaultClient{}
-
-type DefaultClient struct {
-	token string
+type Client struct {
+	token      string
+	httpClient *http.Client
 }
 
-func NewDefaultClient(token string) Client {
-	return &DefaultClient{token: strings.TrimSpace(token)}
+func NewClient(token string, httpClient *http.Client) *Client {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+	return &Client{
+		token:      strings.TrimSpace(token),
+		httpClient: httpClient,
+	}
 }
 
-func (client *DefaultClient) ListInstalledApps(ctx context.Context, params url.Values) ([]*InstalledApp, error) {
+func (client *Client) ListInstalledApps(ctx context.Context, params url.Values) ([]*InstalledApp, error) {
 	resp, err := client.apiGet(ctx, "/installedapps", params)
 	if err != nil {
 		return nil, err
@@ -227,7 +190,7 @@ func (client *DefaultClient) ListInstalledApps(ctx context.Context, params url.V
 	return installedApps, err
 }
 
-func (client *DefaultClient) ListApps(ctx context.Context, params url.Values) ([]*App, error) {
+func (client *Client) ListApps(ctx context.Context, params url.Values) ([]*App, error) {
 	resp, err := client.apiGet(ctx, "/apps", params)
 	if err != nil {
 		return nil, err
@@ -241,7 +204,7 @@ func (client *DefaultClient) ListApps(ctx context.Context, params url.Values) ([
 	return apps, err
 }
 
-func (client *DefaultClient) ListAllDeviceProfiles(ctx context.Context, params url.Values) ([]*Profile, error) {
+func (client *Client) ListAllDeviceProfiles(ctx context.Context, params url.Values) ([]*Profile, error) {
 	resp, err := client.apiGet(ctx, "/deviceprofiles", params)
 	if err != nil {
 		return nil, err
@@ -255,7 +218,7 @@ func (client *DefaultClient) ListAllDeviceProfiles(ctx context.Context, params u
 	return profile, err
 }
 
-func (client *DefaultClient) ListRooms(ctx context.Context, locationId string) ([]*Room, error) {
+func (client *Client) ListRooms(ctx context.Context, locationId string) ([]*Room, error) {
 	resp, err := client.apiGet(ctx, fmt.Sprintf("/locations/%s/rooms", locationId), nil)
 	if err != nil {
 		return nil, err
@@ -269,7 +232,7 @@ func (client *DefaultClient) ListRooms(ctx context.Context, locationId string) (
 	return rooms, err
 }
 
-func (client *DefaultClient) ListLocations(ctx context.Context, params url.Values) ([]*Location, error) {
+func (client *Client) ListLocations(ctx context.Context, params url.Values) ([]*Location, error) {
 	resp, err := client.apiGet(ctx, "/locations", params)
 	if err != nil {
 		return nil, err
@@ -283,7 +246,7 @@ func (client *DefaultClient) ListLocations(ctx context.Context, params url.Value
 	return locations, err
 }
 
-func (client *DefaultClient) ListAllCapabilities(ctx context.Context, params url.Values) ([]*Capability, error) {
+func (client *Client) ListAllCapabilities(ctx context.Context, params url.Values) ([]*Capability, error) {
 	resp, err := client.apiGet(ctx, "/capabilities", params)
 	if err != nil {
 		return nil, err
@@ -297,7 +260,7 @@ func (client *DefaultClient) ListAllCapabilities(ctx context.Context, params url
 	return capabilities, err
 }
 
-func (client *DefaultClient) GetCapabilitiesByIDAndVersion(ctx context.Context, capabilityId string, capabilityVersion int) ([]*Capability, error) {
+func (client *Client) GetCapabilitiesByIDAndVersion(ctx context.Context, capabilityId string, capabilityVersion int) ([]*Capability, error) {
 	resp, err := client.apiGet(ctx, fmt.Sprintf("/capabilities/%s/%d", capabilityId, capabilityVersion), nil)
 	if err != nil {
 		return nil, err
@@ -311,7 +274,7 @@ func (client *DefaultClient) GetCapabilitiesByIDAndVersion(ctx context.Context, 
 	return capabilities, err
 }
 
-func (client *DefaultClient) ListDevices(ctx context.Context) ([]*Device, error) {
+func (client *Client) ListDevices(ctx context.Context) ([]*Device, error) {
 	resp, err := client.apiGet(ctx, "/devices", nil)
 	if err != nil {
 		return nil, err
@@ -325,7 +288,7 @@ func (client *DefaultClient) ListDevices(ctx context.Context) ([]*Device, error)
 	return devices, err
 }
 
-func (client *DefaultClient) GetFullDeviceStatus(ctx context.Context, deviceId string) ([]*Component, error) {
+func (client *Client) GetFullDeviceStatus(ctx context.Context, deviceId string) ([]*Component, error) {
 	resp, err := client.apiGet(ctx, fmt.Sprintf("/devices/%s/status", deviceId), nil)
 	if err != nil {
 		return nil, err
@@ -339,7 +302,7 @@ func (client *DefaultClient) GetFullDeviceStatus(ctx context.Context, deviceId s
 	return devices, err
 }
 
-func (client *DefaultClient) GetDeviceComponentStatus(ctx context.Context, deviceId, componentId string) (ComponentStatus, error) {
+func (client *Client) GetDeviceComponentStatus(ctx context.Context, deviceId, componentId string) (ComponentStatus, error) {
 	resp, err := client.apiGet(ctx, fmt.Sprintf("/devices/%s/components/%s/status", deviceId, componentId), nil)
 	if err != nil {
 		return nil, err
@@ -351,8 +314,8 @@ func (client *DefaultClient) GetDeviceComponentStatus(ctx context.Context, devic
 	return deviceComponentStatus, err
 }
 
-func (client *DefaultClient) GetCapabilityStatus(ctx context.Context, deviceId, componentId, capabilityId string) (*ComponentAttributes, error) {
-	resp, err := client.apiGet(ctx, fmt.Sprintf(" /devices/%s/components/%s/capabilities/%s/status", deviceId, componentId, capabilityId), nil)
+func (client *Client) GetCapabilityStatus(ctx context.Context, deviceId, componentId, capabilityId string) (*ComponentAttributes, error) {
+	resp, err := client.apiGet(ctx, fmt.Sprintf("/devices/%s/components/%s/capabilities/%s/status", deviceId, componentId, capabilityId), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +326,7 @@ func (client *DefaultClient) GetCapabilityStatus(ctx context.Context, deviceId, 
 	return attributes, err
 }
 
-func (client *DefaultClient) ListSubscriptions(ctx context.Context, installedAppId string) ([]*Subscription, error) {
+func (client *Client) ListSubscriptions(ctx context.Context, installedAppId string) ([]*Subscription, error) {
 	resp, err := client.apiGet(ctx, fmt.Sprintf("/installedapps/%s/subscriptions", installedAppId), nil)
 	if err != nil {
 		return nil, err
@@ -377,7 +340,7 @@ func (client *DefaultClient) ListSubscriptions(ctx context.Context, installedApp
 	return subscriptions, err
 }
 
-func (client *DefaultClient) ListSchedules(ctx context.Context, installedAppId string) ([]*Schedule, error) {
+func (client *Client) ListSchedules(ctx context.Context, installedAppId string) ([]*Schedule, error) {
 	resp, err := client.apiGet(ctx, fmt.Sprintf("/installedapps/%s/schedules", installedAppId), nil)
 	if err != nil {
 		return nil, err
@@ -391,7 +354,7 @@ func (client *DefaultClient) ListSchedules(ctx context.Context, installedAppId s
 	return schedules, err
 }
 
-func (client *DefaultClient) ListRules(ctx context.Context, params url.Values) ([]*Rules, error) {
+func (client *Client) ListRules(ctx context.Context, params url.Values) ([]*Rules, error) {
 	resp, err := client.apiGet(ctx, "/rules", params)
 	if err != nil {
 		return nil, err
@@ -405,7 +368,7 @@ func (client *DefaultClient) ListRules(ctx context.Context, params url.Values) (
 	return rules, err
 }
 
-func (client *DefaultClient) apiGet(ctx context.Context, endpoint string, queryParams url.Values) (*http.Response, error) {
+func (client *Client) apiGet(ctx context.Context, endpoint string, queryParams url.Values) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, API+endpoint, nil)
 	if err != nil {
 		return nil, err
@@ -416,7 +379,7 @@ func (client *DefaultClient) apiGet(ctx context.Context, endpoint string, queryP
 	req.Header.Add("User-Agent", fmt.Sprintf("go-smartthings-%s", Version))
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", client.token))
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -433,7 +396,7 @@ func (client *DefaultClient) apiGet(ctx context.Context, endpoint string, queryP
 }
 
 func parseListResponse(input io.ReadCloser, itemsOut interface{}) (*ListResponse, error) {
-	raw, err := ioutil.ReadAll(input)
+	raw, err := io.ReadAll(input)
 	if err != nil {
 		return nil, err
 	}
@@ -451,8 +414,8 @@ func parseListResponse(input io.ReadCloser, itemsOut interface{}) (*ListResponse
 	return listResponse, err
 }
 
-func parseResponse(input io.ReadCloser, Out interface{}) error {
-	raw, err := ioutil.ReadAll(input)
+func parseResponse(input io.ReadCloser, out interface{}) error {
+	raw, err := io.ReadAll(input)
 	if err != nil {
 		return err
 	}
@@ -461,24 +424,8 @@ func parseResponse(input io.ReadCloser, Out interface{}) error {
 		fmt.Println("raw response:", string(raw))
 	}
 
-	if err := json.Unmarshal(raw, &Out); err != nil {
+	if err := json.Unmarshal(raw, &out); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func checkErrorResponse(r io.ReadCloser) error {
-	data, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-
-	var errResponse *ErrorResponse
-	if err := json.Unmarshal(data, &errResponse); err == nil {
-		if errResponse.Error != nil {
-			return errResponse.Error
-		}
 	}
 
 	return nil

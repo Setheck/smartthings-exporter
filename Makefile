@@ -31,7 +31,7 @@ drun: dbuild
 
 tag: MAJOR=0
 tag: MINOR=0
-tag: PATCH=4
+tag: PATCH=5
 tag:
 	git tag "v${MAJOR}.${MINOR}.${PATCH}"
 	git push origin --tags

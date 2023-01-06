@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 )
 
 type ErrorResponse struct {
@@ -24,7 +23,7 @@ func (e *Error) Error() string {
 }
 
 func checkErrorResponse(r io.ReadCloser) error {
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return err
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -397,7 +396,7 @@ func (client *Client) apiGet(ctx context.Context, endpoint string, queryParams u
 }
 
 func parseListResponse(input io.ReadCloser, itemsOut interface{}) (*ListResponse, error) {
-	raw, err := ioutil.ReadAll(input)
+	raw, err := io.ReadAll(input)
 	if err != nil {
 		return nil, err
 	}
@@ -416,7 +415,7 @@ func parseListResponse(input io.ReadCloser, itemsOut interface{}) (*ListResponse
 }
 
 func parseResponse(input io.ReadCloser, out interface{}) error {
-	raw, err := ioutil.ReadAll(input)
+	raw, err := io.ReadAll(input)
 	if err != nil {
 		return err
 	}

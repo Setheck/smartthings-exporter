@@ -10,7 +10,7 @@ env:
   PROJECT_DESCRIPTION: a simple app to help monitor your smart devices via prometheus
 
 jobs:
-  build-arm:
+  release:
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -2,6 +2,18 @@
 
 A simple app to help monitor your smart devices via prometheus. 
 
+## Run
+
+image is available for both linux/amd64 and linux/arm/v7 [here](https://hub.docker.com/r/setheck/smartthings-exporter)
+
+run with docker
+```
+docker run --rm \
+    -p "9119:9119" \
+    -e "STE_API_TOKEN=<your api token>" \
+    setheck/smartthings-exporter
+```
+
 ## Configuration
 
 | Environment Var | Description                    |

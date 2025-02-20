@@ -43,4 +43,4 @@ Since this exporter leverages the smartthings API, there is no need to target th
 
 ## References
 
-* [Smartthings Rest Api](https://smartthings.developer.samsung.com/docs/api-ref/st-api.html)
+* [Smartthings Api](https://developer.smartthings.com/docs/api/public)
